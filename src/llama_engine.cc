@@ -594,7 +594,7 @@ bool LlamaEngine::LoadModelImpl(std::shared_ptr<Json::Value> json_body) {
 #if defined(_WIN32)
       std::wstring mp_ws = Utf8ToWstring(model_path.asString());
       if (std::filesystem::exists(std::filesystem::path(mp_ws))) {
-        params.model = WstringToUtf8(mp_ws);
+        params.model.path = WstringToUtf8(mp_ws);
 #else
       if (std::filesystem::exists(
               std::filesystem::path(model_path.asString()))) {
