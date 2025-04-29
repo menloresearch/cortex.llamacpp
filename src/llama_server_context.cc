@@ -176,23 +176,23 @@ bool IsLlava_1_6(const std::string& model) {
 
 }  // namespace
 
-LlamaServerContext::~LlamaServerContext() {
-}
+LlamaServerContext::~LlamaServerContext() {}
 
 bool LlamaServerContext::LoadModel(const common_params& params_) {
   params = params_;
-  if (!params.mmproj.empty()) {
+  if (!params.mmproj.path.empty()) {
     multimodal = true;
     LOG_DEBUG << "Multi Modal Mode Enabled";
-    clp_ctx = clip_model_load(params.mmproj.c_str(), /*verbosity=*/1);
+    clp_ctx = clip_model_load(params.mmproj.path.c_str(), /*verbosity=*/1);
     if (clp_ctx == nullptr) {
-      LOG_ERROR_LLAMA("unable to load clip model", {{"model", params.mmproj}});
+      LOG_ERROR_LLAMA("unable to load clip model",
+                      {{"model", params.mmproj.path}});
       return false;
     }
 
     // https://github.com/ggml-org/llama.cpp/blob/master/examples/llava/README.md
     // note llava-1.6 needs more context than llava-1.5, at least 3000 is needed (just run it at -c 4096)
-    if (params.n_ctx < 4096 && IsLlava_1_6(params.model)) {
+    if (params.n_ctx < 4096 && IsLlava_1_6(params.model.path)) {
       params.n_ctx = 4096;
       LOG_DEBUG << "Request " << params.n_ctx
                 << " for context length for llava-1.6";
@@ -209,7 +209,7 @@ bool LlamaServerContext::LoadModel(const common_params& params_) {
   ctx = llama_init.context.get();
   if (model == nullptr) {
     LOG_ERROR_LLAMA("llama.cpp unable to load model",
-                    {{"model", params.model}});
+                    {{"model", params.model.path}});
     return false;
   }
 
