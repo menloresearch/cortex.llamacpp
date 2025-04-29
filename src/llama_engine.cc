@@ -472,8 +472,8 @@ void LlamaEngine::GetModels(
   Json::Value model_array(Json::arrayValue);
   for (const auto& [m, s] : server_map_) {
     if (s.ctx.model_loaded_external) {
-      uint64_t vram = llama_get_other_buffer(s.ctx.model);
-      uint64_t ram = llama_get_cpu_buffer(s.ctx.model);
+      uint64_t vram = 0;
+      uint64_t ram = 0;
 
       Json::Value val;
       val["id"] = m;
@@ -555,9 +555,9 @@ bool LlamaEngine::LoadModelImpl(std::shared_ptr<Json::Value> json_body) {
 #if defined(_WIN32)
       std::wstring mp_ws =
           Utf8ToWstring(json_body->operator[]("mmproj").asString());
-      params.mmproj = WstringToUtf8(mp_ws);
+      params.mmproj.path = WstringToUtf8(mp_ws);
 #else
-      params.mmproj = json_body->operator[]("mmproj").asString();
+      params.mmproj.path = json_body->operator[]("mmproj").asString();
 #endif
     }
     if (!json_body->operator[]("grp_attn_n").isNull()) {
@@ -598,7 +598,7 @@ bool LlamaEngine::LoadModelImpl(std::shared_ptr<Json::Value> json_body) {
 #else
       if (std::filesystem::exists(
               std::filesystem::path(model_path.asString()))) {
-        params.model = model_path.asString();
+        params.model.path = model_path.asString();
 #endif
       } else {
         LOG_ERROR << "Could not find model in path " << model_path.asString();
@@ -681,7 +681,7 @@ bool LlamaEngine::LoadModelImpl(std::shared_ptr<Json::Value> json_body) {
     }  // Set folder for llama log
   }
   if (params.model_alias == "unknown") {
-    params.model_alias = params.model;
+    params.model_alias = params.model.path;
   }
 
   if (ShouldInitBackend()) {

@@ -44,7 +44,7 @@ jobs:
         
         gh pr create --title "$pr_title" --body "$pr_body" --head $branch_name --base main --reviewer vansangpfiev
     
-    - name: Apply patch file
-      run: |
-        cd llama.cpp
-        git apply ../patches/0001-Add-API-query-buffer-size.patch
+    # - name: Apply patch file
+    #   run: |
+    #     cd llama.cpp
+    #     git apply ../patches/0001-Add-API-query-buffer-size.patch

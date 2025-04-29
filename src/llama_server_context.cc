@@ -176,23 +176,23 @@ bool IsLlava_1_6(const std::string& model) {
 
 }  // namespace
 
-LlamaServerContext::~LlamaServerContext() {
-}
+LlamaServerContext::~LlamaServerContext() {}
 
 bool LlamaServerContext::LoadModel(const common_params& params_) {
   params = params_;
-  if (!params.mmproj.empty()) {
+  if (!params.mmproj.path.empty()) {
     multimodal = true;
     LOG_DEBUG << "Multi Modal Mode Enabled";
-    clp_ctx = clip_model_load(params.mmproj.c_str(), /*verbosity=*/1);
+    clp_ctx = clip_model_load(params.mmproj.path.c_str(), /*verbosity=*/1);
     if (clp_ctx == nullptr) {
-      LOG_ERROR_LLAMA("unable to load clip model", {{"model", params.mmproj}});
+      LOG_ERROR_LLAMA("unable to load clip model",
+                      {{"model", params.mmproj.path}});
       return false;
     }
 
     // https://github.com/ggml-org/llama.cpp/blob/master/examples/llava/README.md
     // note llava-1.6 needs more context than llava-1.5, at least 3000 is needed (just run it at -c 4096)
-    if (params.n_ctx < 4096 && IsLlava_1_6(params.model)) {
+    if (params.n_ctx < 4096 && IsLlava_1_6(params.model.path)) {
       params.n_ctx = 4096;
       LOG_DEBUG << "Request " << params.n_ctx
                 << " for context length for llava-1.6";
@@ -209,13 +209,13 @@ bool LlamaServerContext::LoadModel(const common_params& params_) {
   ctx = llama_init.context.get();
   if (model == nullptr) {
     LOG_ERROR_LLAMA("llama.cpp unable to load model",
-                    {{"model", params.model}});
+                    {{"model", params.model.path}});
     return false;
   }
 
   if (multimodal) {
     const int n_embd_clip = clip_n_mmproj_embd(clp_ctx);
-    const int n_embd_llm = llama_n_embd(model);
+    const int n_embd_llm = llama_model_n_embd(model);
     if (n_embd_clip != n_embd_llm) {
       LOG_DEBUG << __func__ << ": embedding dim of the multimodal projector ("
                 << n_embd_clip
@@ -235,8 +235,8 @@ bool LlamaServerContext::LoadModel(const common_params& params_) {
   vocab = llama_model_get_vocab(model);
   n_ctx = llama_n_ctx(ctx);
 
-  add_bos_token = llama_add_bos_token(vocab);
-  has_eos_token = !llama_add_eos_token(vocab);
+  add_bos_token = llama_vocab_get_add_bos(vocab);
+  has_eos_token = !llama_vocab_get_add_eos(vocab);
 
   return true;
 }
@@ -284,7 +284,7 @@ void LlamaServerContext::Initialize() {
 void LlamaServerContext::KvCacheClear() {
   LOG_DEBUG << "Clear the entire KV cache";
   // clear the entire KV cache
-  llama_kv_cache_clear(ctx);
+  llama_kv_self_clear(ctx);
   clean_kv_cache = false;
 }
 
@@ -658,7 +658,7 @@ void LlamaServerContext::UpdateSystemPrompt() {
 
   // assign the system KV cache to all parallel sequences
   for (int32_t i = 1; i < params.n_parallel; ++i) {
-    llama_kv_cache_seq_cp(ctx, 0, i, 0, system_tokens.size());
+    llama_kv_self_seq_cp(ctx, 0, i, 0, system_tokens.size());
   }
 
   LOG_DEBUG << "system prompt updated";
@@ -1030,7 +1030,7 @@ void LlamaServerContext::SendEmbedding(LlamaClientSlot& slot) {
   res.error = false;
   res.stop = true;
 
-  const int n_embd = llama_n_embd(model);
+  const int n_embd = llama_model_n_embd(model);
 
   std::vector<float> embd_res(n_embd, 0.0f);
 
@@ -1095,7 +1095,7 @@ bool LlamaServerContext::IngestImages(LlamaClientSlot& slot, int n_batch) {
         n_eval = n_batch;
       }
 
-      const int n_embd = llama_n_embd(model);
+      const int n_embd = llama_model_n_embd(model);
 
       float* embd = img.image_embedding + i * n_embd;
       llava_embd_batch llava_batch =
@@ -1285,10 +1285,10 @@ bool LlamaServerContext::UpdateSlots() {
                 << ", n_system_tokens = " << system_tokens.size()
                 << ", n_cache_tokens = " << slot.cache_tokens.size();
 
-      llama_kv_cache_seq_rm(ctx, slot.id, slot.params.n_keep + 1,
-                            slot.params.n_keep + n_discard + 1);
-      llama_kv_cache_seq_add(ctx, slot.id, slot.params.n_keep + 1 + n_discard,
-                             slot.n_past, -n_discard);
+      llama_kv_self_seq_rm(ctx, slot.id, slot.params.n_keep + 1,
+                           slot.params.n_keep + n_discard + 1);
+      llama_kv_self_seq_add(ctx, slot.id, slot.params.n_keep + 1 + n_discard,
+                            slot.n_past, -n_discard);
 
       if (slot.params.cache_prompt) {
         for (size_t i = slot.params.n_keep + 1 + n_discard;
@@ -1537,14 +1537,14 @@ bool LlamaServerContext::UpdateSlots() {
 
         // keep only the common part
         int p0 = (int)system_tokens.size() + slot.n_past;
-        if (!llama_kv_cache_seq_rm(ctx, slot.id, p0, -1)) {
+        if (!llama_kv_self_seq_rm(ctx, slot.id, p0, -1)) {
           // could not partially delete (likely using a non-Transformer model)
-          llama_kv_cache_seq_rm(ctx, slot.id, -1, -1);
+          llama_kv_self_seq_rm(ctx, slot.id, -1, -1);
 
           p0 = (int)system_tokens.size();
           if (p0 != 0) {
             // copy over the system prompt when there is one
-            llama_kv_cache_seq_cp(ctx, 0, slot.id, -1, -1);
+            llama_kv_self_seq_cp(ctx, 0, slot.id, -1, -1);
           }
 
           // there is no common part left (except for the system prompt)
