@@ -5,8 +5,8 @@
 #include <optional>
 #include "json-schema-to-grammar.h"
 #include "json/writer.h"
-#include "src/llama-arch.h"
 #include "llama_utils.h"
+#include "src/llama-arch.h"
 #include "trantor/utils/Logger.h"
 
 #if defined(_WIN32)
@@ -945,7 +945,7 @@ void LlamaEngine::HandleInferenceImpl(
 #endif
 
   if (is_streamed) {
-    LOG_INFO << "Request " << request_id << ", data: " << data.dump()
+    LOG_INFO << "Request " << request_id << ": "
              << "Streamed, waiting for respone";
     auto state = CreateInferenceState(si.ctx);
     auto model_id = completion.model_id;
