@@ -809,8 +809,8 @@ void LlamaEngine::HandleInferenceImpl(
 
   if (si.ctx.model->arch == LLM_ARCH_QWEN3) {
     json qwen3 = json::array();
-    qwen3.push_back("151643");
-    qwen3.push_back("-100000");
+    qwen3.push_back(151643);
+    qwen3.push_back(-100000);
     arr.push_back(qwen3);
   }
   data["logit_bias"] = std::move(arr);
