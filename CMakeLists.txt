@@ -27,7 +27,7 @@ if(CORTEXLLAMA_VERSION)
   add_compile_definitions(CORTEXLLAMA_VERSION="${CORTEXLLAMA_VERSION}")
 endif()
 
-add_subdirectory(llama.cpp/examples/llava)
+add_subdirectory(llama.cpp/tools/mtmd)
 add_subdirectory(llama.cpp)
 
 add_library(${TARGET} SHARED
