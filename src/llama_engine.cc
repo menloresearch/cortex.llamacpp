@@ -945,7 +945,7 @@ void LlamaEngine::HandleInferenceImpl(
 #endif
 
   if (is_streamed) {
-    LOG_INFO << "Request " << request_id << ": "
+    LOG_INFO << "Request " << request_id << ", data: " << data.dump()
              << "Streamed, waiting for respone";
     auto state = CreateInferenceState(si.ctx);
     auto model_id = completion.model_id;
