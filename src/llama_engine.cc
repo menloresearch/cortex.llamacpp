@@ -5,6 +5,7 @@
 #include <optional>
 #include "json-schema-to-grammar.h"
 #include "json/writer.h"
+#include "src/llama-arch.h"
 #include "llama_utils.h"
 #include "trantor/utils/Logger.h"
 
@@ -804,6 +805,13 @@ void LlamaEngine::HandleInferenceImpl(
   json arr = json::array();
   for (const auto& elem : completion.logit_bias) {
     arr.push_back(llama::inferences::ConvertJsonCppToNlohmann(elem));
+  }
+
+  if (si.ctx.model->arch == LLM_ARCH_QWEN3) {
+    json qwen3 = json::array();
+    qwen3.push_back("151643");
+    qwen3.push_back("-100000");
+    arr.push_back(qwen3);
   }
   data["logit_bias"] = std::move(arr);
   int n_probs = completion.n_probs;
